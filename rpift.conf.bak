@@ -1,0 +1,2 @@
+EXPOSE_DIR=/var/www/rpift/expose_dir
+OVERRIDE_FILES=false

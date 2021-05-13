@@ -1,0 +1,5 @@
+Refactoring
+Switch to ajax requests
+Beautify file input button
+Beautify upload and create directory forms
+Add go back button in sub-dirs
