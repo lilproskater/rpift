@@ -1,5 +1,9 @@
-Refactoring
-Switch to ajax requests
+Ajax:
+Fix File download
+Implement other POST requests
+
+Confirm delete files with password
 Beautify file input button
 Beautify upload and create directory forms
+Beautify icons
 Add go back button in sub-dirs

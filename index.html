@@ -1,0 +1,86 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Raspberry Pi File transferer</title>
+		<link rel="stylesheet" href="/src/css/style.css">
+		<script type="text/javascript" src="/src/js/fontawesome_all.js"></script>
+		<script type="text/javascript" src="/src/js/axios.min.js"></script>
+		<script type="text/javascript" src="/src/js/file-download.js"></script>
+	</head>
+	<body>
+		<img class="rpi_logo" src="/src/image/RPi_logo.svg">
+		<table>
+			<thead>
+				<tr>
+					<th><span>Type</span></th>
+					<th><span>Name</span></th>
+					<th><span>Actions</span></th>
+				</tr>
+			</thead>
+			<tbody id="table" style="display: none;">
+				
+			</tbody>
+		</table>
+		<form method="POST" action="/" enctype="multipart/form-data" class="upload_form">
+			<h3>Upload Multiple Files</h3>
+			<input name="upload_files[]" type="file" multiple="multiple">
+			<button type="submit" name="upload" class="button" title="upload"><i class="fas fa-file-upload"></i></button>
+		</form>
+		<form method="POST" action="/" class="newdir_form">
+			<h3>Create new directory</h3>
+			<input class="input" name="new_directory" placeholder="Directory name">
+			<button type="submit" name="create_directory" class="button" title="create"><i class="fas fa-folder-plus"></i></button>
+		</form>
+		<p class="error_msg"></p>
+		<script type="text/javascript">
+			var current_dir = '';
+			function $(id) {
+				return document.getElementById(id);
+			}
+
+			function $_css(query) {
+				return document.querySelectorAll(query);
+			}
+
+			function list_dir(dir) {
+				$('table').style.display = 'none';
+				axios.get('/server.php', {
+					params: {
+						'current_dir': current_dir,
+						'directory': dir
+					}
+				}).then(response => {
+					current_dir = response['data']['current_dir'];
+					$('table').innerHTML = response['data']['message'];
+					var files = $_css('a.file');
+					var directories = $_css('a.directory');
+					for (var i = 0; i < files.length; ++ i) {
+						files[i].addEventListener('click', function() {
+							axios({
+								url: '/server.php',
+								method: 'GET',
+								responseType: 'blob',
+								params: {
+									'current_dir': current_dir,
+									'download': this.attributes['data-file'].value+'s'
+								}
+							}).then(response=> {
+								FileDownload(response['data']);
+							});
+						});
+					}
+					for (var i = 0; i < directories.length; ++ i) {
+						directories[i].addEventListener('click', function() {
+							list_dir(this.attributes['data-dir'].value);
+						});
+					}
+					$('table').style.display = '';
+				});
+			}
+
+			window.onload = function() {
+				list_dir('/');
+			}
+		</script>
+	</body>
+</html>
