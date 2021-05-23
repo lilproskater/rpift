@@ -9,31 +9,72 @@
 	</head>
 	<body>
 		<img class="rpi_logo" src="/src/image/RPi_logo.svg">
+		<div style="display: flex; align-items: center;">
+			<h2 id="current_dir"></h2>
+			<button type="submit" class="button" id="refresh_current_dir" title="refresh" style="margin: 0 0 0 15px; width: 50px; height: 50px;">
+				<i class="fas fa-sync-alt"></i>
+			</button>
+		</div>		
+		<p class="response_status" id="response_status"></p>
+		<div style="overflow-x: hidden; overflow-y: auto; max-height: 280px; width: max-content; padding: 0 30px 0 0;">
+			<table>
+				<thead>
+					<tr>
+						<th><span>Type</span></th>
+						<th><span>Name</span></th>
+						<th><span>Actions</span></th>
+					</tr>
+				</thead>
+				<tbody id="table" style="display: none;">
+					
+				</tbody>
+			</table>
+		</div>
+		<button type="submit" class="button" id="go_back" title="go back" style="margin: 15px 0 0 10px; height: 50px; width: 50px;">
+			<i class="fas fa-long-arrow-alt-left"></i>
+		</button>
 		<table>
-			<thead>
-				<tr>
-					<th><span>Type</span></th>
-					<th><span>Name</span></th>
-					<th><span>Actions</span></th>
-				</tr>
-			</thead>
-			<tbody id="table" style="display: none;">
-				
-			</tbody>
+			<tr>
+				<td>
+					<form class="upload_form" onsubmit="return false;">
+						<h3>Upload Multiple Files</h3>
+						<input type="file" id="files" multiple="multiple" name="files" hidden>
+						<button class="button" id="browse" title="browse" style="margin-left: 0">Browse...</button>
+						<button type="submit" class="button" id="upload" title="upload"><i class="fas fa-file-upload"></i></button>
+						<p id="selected_files"></p>
+					</form>
+				</td>
+				<td>
+					<form class="move_form" onsubmit="return false;">
+						<h3>Move</h3>
+						<input class="input" placeholder="Directory/file absolute path" id="move_target" style="margin-top: 10px;"><br>
+						<input class="input" placeholder="Target directory absolute path" id="move_to_dir" style="margin-top: 10px;"><br>
+						<input class="input" placeholder="Rename to" id="move_rename_to">
+						<button type="submit" class="button" id="move" title="create"><i class="fas fa-angle-double-right"></i></button>
+					</form>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<form class="newdir_form" onsubmit="return false;">
+						<h3>Create new directory</h3>
+						<input class="input" placeholder="Directory name" id="new_directory">
+						<button type="submit" class="button" id="create_directory" title="create"><i class="fas fa-folder-plus"></i></button>
+					</form>
+				</td>
+				<td>
+					<form class="copy_form" onsubmit="return false;">
+						<h3>Copy</h3>
+						<input class="input" placeholder="Directory/file absolute path" id="copy_target" style="margin-top: 10px;"><br>
+						<input class="input" placeholder="Target directory absolute path" id="copy_to_dir" style="margin-top: 10px;"><br>
+						<input class="input" placeholder="Rename to" id="copy_rename_to" style="margin-top: 10px;">
+						<button type="submit" class="button" id="copy" title="create"><i class="fas fa-copy"></i></button>
+					</form>
+				</td>
+			</tr>
 		</table>
-		<form method="POST" action="/" enctype="multipart/form-data" class="upload_form">
-			<h3>Upload Multiple Files</h3>
-			<input name="upload_files[]" type="file" multiple="multiple">
-			<button type="submit" name="upload" class="button" title="upload"><i class="fas fa-file-upload"></i></button>
-		</form>
-		<form method="POST" action="/" class="newdir_form">
-			<h3>Create new directory</h3>
-			<input class="input" name="new_directory" placeholder="Directory name">
-			<button type="submit" name="create_directory" class="button" title="create"><i class="fas fa-folder-plus"></i></button>
-		</form>
-		<p class="error_msg"></p>
 		<script type="text/javascript">
-			var current_dir = '';
+			var current_dir = '/';
 			function $(id) {
 				return document.getElementById(id);
 			}
@@ -42,18 +83,135 @@
 				return document.querySelectorAll(query);
 			}
 
+			function stringify(obj) {
+				var str = [];
+				for (var p in obj)
+					if (obj.hasOwnProperty(p))
+						str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+				return str.join("&");
+			}
+
+			function delete_file(file) {
+				axios({
+					url: '/server.php',
+					method: 'POST',
+					headers: {'content-type': 'application/x-www-form-urlencoded;charset=utf-8'},
+					data: stringify({
+						'delete_file': "call_func",
+						'current_dir': current_dir,
+						'deleting_file': file
+					})
+				}).then(response => {
+					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+					$('response_status').innerHTML = response['data']['message'];
+					$('refresh_current_dir').click();
+				});
+			}
+
+			function create_directory(dir) {
+				axios({
+					url: '/server.php',
+					method: 'POST',
+					headers: {'content-type': 'application/x-www-form-urlencoded;charset=utf-8'},
+					data: stringify({
+						'create_directory': "call_func",
+						'current_dir': current_dir,
+						'new_directory': dir
+					})
+				}).then(response => {
+					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+					$('response_status').innerHTML = response['data']['message'];
+					$('refresh_current_dir').click();
+				});
+			}
+
+			function zip_dir(dir) {
+				axios({
+					url: '/server.php',
+					method: 'POST',
+					headers: {'content-type': 'application/x-www-form-urlencoded;charset=utf-8'},
+					data: stringify({
+						'zip_directory': "call_func",
+						'current_dir': current_dir,
+						'zipping_directory': dir
+					})
+				}).then(response => {
+					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+					$('response_status').innerHTML = response['data']['message'];
+					$('refresh_current_dir').click();
+				});
+			}
+
+			function delete_dir(dir) {
+				axios({
+					url: '/server.php',
+					method: 'POST',
+					headers: {'content-type': 'application/x-www-form-urlencoded;charset=utf-8'},
+					data: stringify({
+						'delete_directory': "call_func",
+						'current_dir': current_dir,
+						'deleting_directory': dir
+					})
+				}).then(response => {
+					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+					$('response_status').innerHTML = response['data']['message'];
+					$('refresh_current_dir').click();
+				});
+			}
+
+			function upload_files() {
+				var formData = new FormData();
+				var count = $('files').files.length;
+				if (count == 0) {
+					$('response_status').style.color = '#f00';
+					$('response_status').innerHTML = 'Please select upload files';
+					return;
+				}
+				formData.append('upload', "call_func");
+				formData.append('current_dir', current_dir);
+				for (var i = 0; i < count; ++ i)
+					formData.append('upload_files[]', $('files').files[i]);
+				axios({
+					url: '/server.php',
+					method: 'POST',
+					headers: {'Content-Type': 'multipart/form-data'},
+					data: formData
+				}).then(response => {
+					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+					$('response_status').innerHTML = response['data']['message'];
+					$('files').value = null;
+					$('selected_files').innerHTML = '';
+					$('refresh_current_dir').click();
+				});
+			}
+
 			function list_dir(dir) {
 				$('table').style.display = 'none';
-				axios.get('/server.php', {
+				$('go_back').style.display = (current_dir == '/' && !dir) ? 'none' : '';
+				axios({
+					url: '/server.php',
+					method: 'GET',
 					params: {
+						'list_dir': 'call_func',
 						'current_dir': current_dir,
 						'directory': dir
 					}
 				}).then(response => {
+					if (response['data']['status'] != 'ok') {
+						$('current_dir').innerHTML = 'Current directory: ';
+						$('response_status').style.color = '#f00';
+						$('response_status').innerHTML = response['data']['message'];
+						return;
+					}
 					current_dir = response['data']['current_dir'];
+					current_dir = (current_dir.length != 1 && current_dir.slice(-1) == '/' ? current_dir.slice(0, -1) : current_dir);
 					$('table').innerHTML = response['data']['message'];
+					$('current_dir').innerHTML = 'Current directory: ' + current_dir;
 					var files = $_css('a.file');
 					var directories = $_css('a.directory');
+					var zip_directories = $_css('button.zip_directory');
+					var delete_directories = $_css('button.delete_directory');
+					var delete_files = $_css('button.delete_file');
 					for (var i = 0; i < files.length; ++ i) {
 						files[i].addEventListener('click', function() {
 							axios({
@@ -61,12 +219,26 @@
 								method: 'GET',
 								responseType: 'blob',
 								params: {
+									'download_file': 'call_func',
 									'current_dir': current_dir,
-									'download': this.attributes['data-file'].value+'s'
+									'file': this.attributes['data-file'].value
 								}
 							}).then(response=> {
-								FileDownload(response['data']);
+								response['headers']['response'] = JSON.parse(response['headers']['response']);
+								if (response['headers']['response']['status'] == 'ok') {
+									$('response_status').style.color = '#17c117';
+									var filename = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(response['headers']['content-disposition'])[1];
+									FileDownload(response['data'], decodeURIComponent(escape(filename)));
+								} else
+									$('response_status').style.color = '#f00';
+								$('response_status').innerHTML = response['headers']['response']['message'];
 							});
+						});
+					}
+					for (var i = 0; i < delete_files.length; ++ i) {
+						delete_files[i].addEventListener('click', function() {
+							if (confirm("Do you really want to delete this file?"))
+								delete_file(this.attributes['data-file'].value);
 						});
 					}
 					for (var i = 0; i < directories.length; ++ i) {
@@ -74,12 +246,96 @@
 							list_dir(this.attributes['data-dir'].value);
 						});
 					}
+					for (var i = 0; i < zip_directories.length; ++ i) {
+						zip_directories[i].addEventListener('click', function() {
+							zip_dir(this.attributes['data-dir'].value);
+						});
+					}
+					for (var i = 0; i < delete_directories.length; ++ i) {
+						delete_directories[i].addEventListener('click', function() {
+							if (confirm("Do you really want to delete this directory?"))
+								delete_dir(this.attributes['data-dir'].value);
+						});
+					}
 					$('table').style.display = '';
 				});
 			}
 
+			function move(target, target_dir, rename_to) {
+				axios({
+					url: '/server.php',
+					method: 'POST',
+					headers: {'content-type': 'application/x-www-form-urlencoded;charset=utf-8'},
+					data: stringify({
+						'move': 'call_func',
+						'target': target,
+						'target_dir': target_dir,
+						'rename_to': rename_to
+					})
+				}).then(response=> {
+					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+					$('response_status').innerHTML = response['data']['message'];
+					$('refresh_current_dir').click();
+					$('move_target').value = null;
+					$('move_to_dir').value = null;
+					$('move_rename_to').value = null;
+				});
+			}
+
+			function copy(target, target_dir, rename_to) {
+				axios({
+					url: '/server.php',
+					method: 'POST',
+					headers: {'content-type': 'application/x-www-form-urlencoded;charset=utf-8'},
+					data: stringify({
+						'copy': 'call_func',
+						'target': target,
+						'target_dir': target_dir,
+						'rename_to': rename_to
+					})
+				}).then(response=> {
+					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+					$('response_status').innerHTML = response['data']['message'];
+					$('refresh_current_dir').click();
+					$('copy_target').value = null;
+					$('copy_to_dir').value = null;
+					$('copy_rename_to').value = null;
+				});
+			}
+
 			window.onload = function() {
-				list_dir('/');
+				list_dir('');
+				$('files').value = null;
+				$('new_directory').value = null;
+				$('create_directory').onclick = function() {
+					create_directory($('new_directory').value);
+					$('new_directory').value = '';
+				}
+				$('browse').onclick = function() {
+					$('files').click();
+					$('files').onchange = function() {
+						var length = this.files.length;
+						$('selected_files').innerHTML = '(' + length + ') file' + (length == 1 ? '' : 's') + ' selected';
+					}
+				}
+				$('refresh_current_dir').onclick = function () {
+					list_dir('');
+				}
+				$('go_back').onclick = function() {
+					current_dir = current_dir.split('/').slice(0, -1);
+					var child_dir = current_dir.slice(-1)[0] ? current_dir.pop() : '';
+					current_dir = current_dir.slice(-1)[0] ? current_dir.join('/') : '/';
+					list_dir(child_dir);
+				}
+				$('upload').onclick = function() {
+					upload_files();
+				}
+				$('move').onclick = function() {
+					move($('move_target').value, $('move_to_dir').value, $('move_rename_to').value);
+				}
+				$('copy').onclick = function() {
+					copy($('copy_target').value, $('copy_to_dir').value, $('copy_rename_to').value);
+				}
 			}
 		</script>
 	</body>
