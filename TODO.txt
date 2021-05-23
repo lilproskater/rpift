@@ -1,3 +1,5 @@
+Fix upload on upload issue
+Handle console "Cancel upload" error
 Beautify upload and create directory forms
 Beautify icons
 Refactoring

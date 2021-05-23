@@ -14,7 +14,13 @@
 			<button type="submit" class="button" id="refresh_current_dir" title="refresh" style="margin: 0 0 0 15px; width: 50px; height: 50px;">
 				<i class="fas fa-sync-alt"></i>
 			</button>
-		</div>		
+		</div>
+		<div class="progress" id="progress">
+			<div class="progress_bar" id="progress_bar">
+			 	<span style="width: 25%">25%</span>
+			</div>
+			<button id="cancel_upload" class="button" style="margin: 0 0 0 10px; width: 30px; height: 30px; font-size: 12px;"><i class="fas fa-times"></i></button>
+		</div>
 		<p class="response_status" id="response_status"></p>
 		<div style="overflow-x: hidden; overflow-y: auto; max-height: 280px; width: max-content; padding: 0 30px 0 0;">
 			<table>
@@ -75,6 +81,9 @@
 		</table>
 		<script type="text/javascript">
 			var current_dir = '/';
+			var uploadCancelToken = null;
+			var upload_source = null;
+
 			function $(id) {
 				return document.getElementById(id);
 			}
@@ -89,6 +98,18 @@
 					if (obj.hasOwnProperty(p))
 						str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
 				return str.join("&");
+			}
+
+			function cancel_upload() {
+				upload_source.cancel();
+				$('response_status').style.color = '#f00';
+				$('response_status').innerHTML = 'Uploading cancelled';
+				$('files').value = null;
+				$('selected_files').innerHTML = '';
+				$('progress').style.display = 'none';
+				$('response_status').style.display = 'block';
+				$('refresh_current_dir').click();
+				return;
 			}
 
 			function delete_file(file) {
@@ -161,7 +182,9 @@
 
 			function upload_files() {
 				var formData = new FormData();
-				var count = $('files').files.length;
+				var files = $('files');
+				var count = files.files.length;
+				var total_size = 0;
 				if (count == 0) {
 					$('response_status').style.color = '#f00';
 					$('response_status').innerHTML = 'Please select upload files';
@@ -170,15 +193,41 @@
 				formData.append('upload', "call_func");
 				formData.append('current_dir', current_dir);
 				for (var i = 0; i < count; ++ i)
-					formData.append('upload_files[]', $('files').files[i]);
+					total_size += files.files[i].size;
+				if (total_size > 4096*1024**2) {
+					$('response_status').style.color = '#f00';
+					$('response_status').innerHTML = 'Files size limit exited';
+					$('files').value = null;
+					return;
+				}
+				for (var i = 0; i < count; ++ i)
+					formData.append('upload_files[]', files.files[i]);
+				$('response_status').style.display = 'none';
+				$('progress').style.display = 'flex';
+				uploadCancelToken = axios.CancelToken;
+				upload_source = uploadCancelToken.source();
 				axios({
 					url: '/server.php',
 					method: 'POST',
 					headers: {'Content-Type': 'multipart/form-data'},
-					data: formData
+					data: formData,
+					cancelToken: upload_source.token,
+					onUploadProgress: function (progressEvent) {
+						var persentage = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+						$('progress_bar').children[0].style.width = String(persentage) + '%';
+						$('progress_bar').children[0].innerHTML = String(persentage) + '%';
+	            	},
 				}).then(response => {
-					$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
-					$('response_status').innerHTML = response['data']['message'];
+					$('progress').style.display = 'none';
+					$('response_status').style.display = 'block';
+					if (response['data']) {
+						$('response_status').style.color = response['data']['status'] == 'ok' ? '#17c117' : '#f00';
+						$('response_status').innerHTML = response['data']['message'];
+					}
+					else {
+						$('response_status').style.color = '#f00';
+						$('response_status').innerHTML = 'File size exited';
+					}
 					$('files').value = null;
 					$('selected_files').innerHTML = '';
 					$('refresh_current_dir').click();
@@ -335,6 +384,9 @@
 				}
 				$('copy').onclick = function() {
 					copy($('copy_target').value, $('copy_to_dir').value, $('copy_rename_to').value);
+				}
+				$('cancel_upload').onclick = function() {
+					cancel_upload();
 				}
 			}
 		</script>
