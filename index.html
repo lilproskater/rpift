@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Raspberry Pi File transferer</title>
+		<title>RPiFT - Raspberry Pi File Transferer</title>
 		<link rel="stylesheet" href="/src/css/style.css">
 		<script type="text/javascript" src="/src/js/fontawesome_all.js"></script>
 		<script type="text/javascript" src="/src/js/axios.min.js"></script>
@@ -81,7 +81,6 @@
 		</table>
 		<script type="text/javascript">
 			var current_dir = '/';
-			var uploadCancelToken = null;
 			var upload_source = null;
 
 			function $(id) {
@@ -101,15 +100,15 @@
 			}
 
 			function cancel_upload() {
-				upload_source.cancel();
-				$('response_status').style.color = '#f00';
-				$('response_status').innerHTML = 'Uploading cancelled';
-				$('files').value = null;
-				$('selected_files').innerHTML = '';
-				$('progress').style.display = 'none';
-				$('response_status').style.display = 'block';
-				$('refresh_current_dir').click();
-				return;
+				if (confirm("Do you really want to candel uploading?")) {
+					upload_source.cancel();
+					$('response_status').style.color = '#f00';
+					$('response_status').innerHTML = 'Uploading cancelled';
+					upload_source = null;
+					$('progress').style.display = 'none';
+					$('response_status').style.display = 'block';
+					$('refresh_current_dir').click();
+				}
 			}
 
 			function delete_file(file) {
@@ -194,18 +193,28 @@
 				formData.append('current_dir', current_dir);
 				for (var i = 0; i < count; ++ i)
 					total_size += files.files[i].size;
-				if (total_size > 4096*1024**2) {
+				if (total_size > 4095*1024**2) {
 					$('response_status').style.color = '#f00';
 					$('response_status').innerHTML = 'Files size limit exited';
 					$('files').value = null;
+					$('selected_files').innerHTML = '';
 					return;
 				}
 				for (var i = 0; i < count; ++ i)
 					formData.append('upload_files[]', files.files[i]);
 				$('response_status').style.display = 'none';
 				$('progress').style.display = 'flex';
-				uploadCancelToken = axios.CancelToken;
-				upload_source = uploadCancelToken.source();
+				if (upload_source) {
+					$('response_status').style.color = '#f00';
+					$('response_status').innerHTML = 'Already uploading. Wait until upload is done';
+					$('response_status').style.display = 'block';
+					$('files').value = null;
+					$('selected_files').innerHTML = '';
+					return;
+				}
+				$('files').value = null;
+				$('selected_files').innerHTML = '';
+				upload_source = axios.CancelToken.source();
 				axios({
 					url: '/server.php',
 					method: 'POST',
@@ -216,8 +225,10 @@
 						var persentage = Math.round((progressEvent.loaded * 100) / progressEvent.total);
 						$('progress_bar').children[0].style.width = String(persentage) + '%';
 						$('progress_bar').children[0].innerHTML = String(persentage) + '%';
-	            	},
+					},
 				}).then(response => {
+					// console.log(response);
+					upload_source = null;
 					$('progress').style.display = 'none';
 					$('response_status').style.display = 'block';
 					if (response['data']) {
@@ -228,13 +239,12 @@
 						$('response_status').style.color = '#f00';
 						$('response_status').innerHTML = 'File size exited';
 					}
-					$('files').value = null;
-					$('selected_files').innerHTML = '';
 					$('refresh_current_dir').click();
-				});
+				}).catch(error => {});
 			}
 
 			function list_dir(dir) {
+				$('response_status').innerHTML = '';
 				$('table').style.display = 'none';
 				$('go_back').style.display = (current_dir == '/' && !dir) ? 'none' : '';
 				axios({
@@ -246,6 +256,7 @@
 						'directory': dir
 					}
 				}).then(response => {
+					// console.log(response['data']);
 					if (response['data']['status'] != 'ok') {
 						$('current_dir').innerHTML = 'Current directory: ';
 						$('response_status').style.color = '#f00';

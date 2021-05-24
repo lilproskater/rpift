@@ -1,5 +1,5 @@
 # RPiFT - Raspberry Pi File Transferer
-
+![Raspberry Pi Logo](favicon.ico)
 ## Description
 This web-site allows you to transfer files between your Rasbperry Pi MicroSD and any other connected device. Initially it was designed to be used on Raspberry Pi, but you can use it anywhere.
 

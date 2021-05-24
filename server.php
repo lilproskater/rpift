@@ -15,6 +15,12 @@
 	}
 
 
+	function str_starts_with( $haystack, $needle ) {
+		$length = strlen( $needle );
+		return substr($haystack, 0, $length) === $needle;
+	}
+
+
 	function copyr($source, $dest){
 		if (is_dir($source)) {
 			$dir_handle = opendir($source);
@@ -39,6 +45,18 @@
 	}
 
 
+	function is_in_blacklist($path) {
+		global $conf;
+		if (isset($conf['FOLDERS_BLACKLIST'])) {
+			foreach ($conf['FOLDERS_BLACKLIST'] as $black_folder) {
+				if (strpos($path, $black_folder) !== false)
+					return true;
+			}
+		}
+		return false;
+	}
+
+
 	function scandir_sorted($dir) {
 		$result = array();
 		$files  = array();
@@ -56,8 +74,7 @@
 	function zip_directory($current_dir, $source, $destination) {
 		global $conf, $result_pattern;
 		$current_dir .= substr($current_dir, -1) == '/' ? '' : '/';
-		while (in_array(substr($source, -1), ['/', '\\']))
-			$source = substr($source, 0, -1);
+		$source = rtrim($source, '/\\');
 		$path = $conf['EXPOSE_DIR'].$current_dir.$source;
 		if (strpos($path, '..') != false) {
 			$result_pattern['message'] = 'Permission denied';
@@ -116,13 +133,14 @@
 		if (strpos($conf, ';') !== false)
 			return 'Invalid config file: Your config file should not contain ";" symbol';
 		$conf = explode("\n", $conf);
-		if (!end($conf))
-			array_pop($conf);
 		for ($i = 0; $i < count($conf); ++ $i) {
-			$this_config = explode('=', $conf[$i]);
-			$conf[$this_config[0]] = $this_config[1];
-			unset($conf[$i]);
+			if ($conf[$i] && !str_starts_with($conf[$i], '#')) {
+				$this_config = explode('=', $conf[$i], 2);
+				$conf[trim($this_config[0])] = trim($this_config[1]);
+			}
 		}
+		// Remove numeric indexes
+		$conf = array_intersect_key($conf, array_flip(array_filter(array_keys($conf), 'is_string')));
 		if (!isset($conf['EXPOSE_DIR']))
 			return 'Invalid config: EXPOSE_DIR is not set!';
 		if (!isset($conf['ALLOW_UPLOAD_OVERRIDE']))
@@ -141,11 +159,19 @@
 		$conf['ALLOW_ZIP_OVERRIDE'] = strtolower($conf['ALLOW_ZIP_OVERRIDE']) == 'true';
 		$conf['ALLOW_DELETE'] = strtolower($conf['ALLOW_DELETE']) == 'true';
 		$conf['CONF_FNAME'] = $config_file;
-		if (in_array(substr($conf['EXPOSE_DIR'], -1), ['/', '\\']))
-			$conf['EXPOSE_DIR'] = substr($conf['EXPOSE_DIR'], 0, -1);
+		$conf['EXPOSE_DIR'] = rtrim($conf['EXPOSE_DIR'], '/\\');
 		if (!is_dir($conf['EXPOSE_DIR']))
 			mkdir($conf['EXPOSE_DIR'], 0755, true);
-		$conf['EXPOSE_DIR'] = realpath($conf['EXPOSE_DIR']);
+		$conf['EXPOSE_DIR'] = str_replace('\\', '/', realpath($conf['EXPOSE_DIR']));
+		if (isset($conf['FOLDERS_BLACKLIST'])) {
+			if (!$conf['FOLDERS_BLACKLIST']) {
+				return 'Invalid config: FOLDERS_BLACKLIST cannot be empty if defined!';
+			}
+			$conf['FOLDERS_BLACKLIST'] = str_replace(', ', ',', $conf['FOLDERS_BLACKLIST']);
+			$conf['FOLDERS_BLACKLIST'] = explode(',', $conf['FOLDERS_BLACKLIST']);
+			foreach ($conf['FOLDERS_BLACKLIST'] as $index=>$black_folder)
+				$conf['FOLDERS_BLACKLIST'][$index] = $conf['EXPOSE_DIR'].'/'.trim($black_folder, '/\\');
+		}
 		return $conf;
 	}
 
@@ -153,11 +179,14 @@
 	function list_dir($current_dir, $dir) {
 		global $conf, $result_pattern;
 		$current_dir .= substr($current_dir, -1) == '/' ? '' : '/';
-		while (in_array(substr($dir, -1), ['/', '\\']))
-			$dir = substr($dir, 0, -1);
+		$dir = rtrim($dir, '/\\');
 		$path = $conf['EXPOSE_DIR'].$current_dir.$dir;
 		if (strpos($path, '..') != false) {
 			$result_pattern['message'] = 'Permission denied';
+			return $result_pattern;
+		}
+		if (is_in_blacklist($path)) {
+			$result_pattern['message'] = 'Permission denied. Folder in blacklist';
 			return $result_pattern;
 		}
 		if (is_dir($path)) {
@@ -168,12 +197,16 @@
 				$result_pattern['message'] .= '<tr><td><p style="margin-left: 20px;">Directory is empty...</p></tr>';
 			else
 				foreach ($dir_content as $dc) {
-					if (is_dir($conf['EXPOSE_DIR'].$current_dir.$dir.'/'.$dc)) {
+					if (is_in_blacklist($path.$dc))
+						continue;
+					if (is_dir($path.$dc)) {
 						$result_pattern['message'] .= '<tr><td><i class="fas fa-folder"></i></td>';
 						$result_pattern['message'] .= '<td><a href="#" data-dir="'.$dc.'" onclick="return false;" class="directory">'.$dc.'</a></td>';
 						$result_pattern['message'] .= '<td class="row"><form onsubmit="return false;">';
-						$result_pattern['message'] .= '<button type="submit" data-dir="'.$dc.'" class="button delete_directory" title="delete">';
-						$result_pattern['message'] .= '<i class="fas fa-trash"></i></button>';
+						if ($conf['ALLOW_DELETE']) {
+							$result_pattern['message'] .= '<button type="submit" data-dir="'.$dc.'" class="button delete_directory" title="delete">';
+							$result_pattern['message'] .= '<i class="fas fa-trash"></i></button>';
+						}
 						$result_pattern['message'] .= '</form><form onsubmit="return false;">';
 						$result_pattern['message'] .= '<button type="submit" data-dir="'.$dc.'" class="button zip_directory" title="zip">';
 						$result_pattern['message'] .= '<i class="far fa-file-archive"></i></button>';
@@ -182,9 +215,11 @@
 					else {
 						$result_pattern['message'] .= '<tr><td><i class="fas fa-file"></i></td>';
 						$result_pattern['message'] .= '<td><a href="#" data-file="'.$dc.'" onclick="return false;" class="file">'.$dc.'</a></td>';
-						$result_pattern['message'] .= '<td class="row"><form onsubmit="return false;">';
-						$result_pattern['message'] .= '<button type="submit" data-file="'.$dc.'" class="button delete_file" title="delete">';
-						$result_pattern['message'] .= '<i class="fas fa-trash"></i></button></td>';
+						if ($conf['ALLOW_DELETE']) {
+							$result_pattern['message'] .= '<td class="row"><form onsubmit="return false;">';
+							$result_pattern['message'] .= '<button type="submit" data-file="'.$dc.'" class="button delete_file" title="delete">';
+							$result_pattern['message'] .= '<i class="fas fa-trash"></i></button></td>';
+						}
 						$result_pattern['message'] .= '</form></tr>';
 					}
 				}
@@ -337,13 +372,10 @@
 				return $result_pattern;
 			}
 		}
-		$conf['EXPOSE_DIR'] = str_replace('\\', '/', $conf['EXPOSE_DIR']);
 		$target = str_replace('\\', '/', $target);
 		$target_dir = str_replace('\\', '/', $target_dir);
-		while (substr($target, -1) == '/')
-			$target = substr($target, 0, -1);
-		while (substr($target_dir, -1) == '/')
-			$target_dir = substr($target_dir, 0, -1);
+		$target = rtrim($target, '/');
+		$target_dir = rtrim($target_dir, '/');
 		$path = $conf['EXPOSE_DIR'].$target;
 		$target_path = $conf['EXPOSE_DIR'].$target_dir;
 		if (strpos($path, '..') != false || strpos($target_path, '..') != false ) {
@@ -395,13 +427,10 @@
 				return $result_pattern;
 			}
 		}
-		$conf['EXPOSE_DIR'] = str_replace('\\', '/', $conf['EXPOSE_DIR']);
 		$target = str_replace('\\', '/', $target);
 		$target_dir = str_replace('\\', '/', $target_dir);
-		while (substr($target, -1) == '/')
-			$target = substr($target, 0, -1);
-		while (substr($target_dir, -1) == '/')
-			$target_dir = substr($target_dir, 0, -1);
+		$target = rtrim($target, '/');
+		$target_dir = rtrim($target_dir, '/');
 		$path = $conf['EXPOSE_DIR'].$target;
 		$target_path = $conf['EXPOSE_DIR'].$target_dir;
 		if (strpos($path, '..') != false || strpos($target_path, '..') != false ) {
@@ -450,8 +479,9 @@
 	}
 
 	/* ENTRY POINT */
+	$config_path = 'rpift.conf';
 	$result_pattern = ['status'=>'error', 'message'=>''];
-	$conf = validate_config_file('rpift.conf');
+	$conf = validate_config_file($config_path);
 	if (is_string($conf)) {
 		$result_pattern['message'] = $conf;
 		echo json_encode($result_pattern);

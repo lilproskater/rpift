@@ -1,5 +1,11 @@
-Fix upload on upload issue
-Handle console "Cancel upload" error
-Beautify upload and create directory forms
+Folders blacklist (ADD TO ALL REQUESTS)
+Files blacklist?
+Allow zip
+Allow upload
+Allow move files/dirs
+Allow copy files/dirs
+Max upload size in conf file
+Test move/copy again. Without and with / in beginning
+Beautify whole site with forms below
 Beautify icons
-Refactoring
+Refactoring, optimization + organization
