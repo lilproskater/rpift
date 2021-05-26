@@ -51,13 +51,13 @@ tr a {
 .fa-folder {
 	color: #ffa700;
 	font-size: 30px;
-	margin: 0 10px;
+	margin: 15px 10px;
 }
 
 .fa-file {
 	color: #868686;
 	font-size: 30px;
-	margin: 0 10px;
+	margin: 15px 10px;
 }
 
 .upload_form {
@@ -96,6 +96,8 @@ tr a {
 .response_status {
 	font-weight: bold;
 	margin: 10px 0 15px 10px;
+	display: flex;
+	align-items: center;
 }
 
 #current_dir {

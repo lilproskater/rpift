@@ -1,11 +1,4 @@
-Folders blacklist (ADD TO ALL REQUESTS)
-Files blacklist?
-Allow zip
-Allow upload
-Allow move files/dirs
-Allow copy files/dirs
-Max upload size in conf file
-Test move/copy again. Without and with / in beginning
+Handle upload file limit size on front-end
 Beautify whole site with forms below
 Beautify icons
 Refactoring, optimization + organization
