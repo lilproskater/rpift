@@ -1,4 +1,3 @@
-Handle upload file limit size on front-end
 Beautify whole site with forms below
 Beautify icons
 Refactoring, optimization + organization
