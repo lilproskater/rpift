@@ -84,6 +84,7 @@
 			var upload_source = null;
 			var upload_limit_size = null;
 			var max_execution_time = null;
+			var max_input_time = null;
 
 			function $(id) {
 				return document.getElementById(id);
@@ -122,6 +123,18 @@
 					}
 				}).then(response => {
 					max_execution_time = response['data'];
+				});
+			}
+
+			function set_max_input_time() {
+				axios({
+					url: '/server.php',
+					method: 'GET',
+					params: {
+						'max_input_time': 'call_func',
+					}
+				}).then(response => {
+					max_input_time = response['data'];
 				});
 			}
 
@@ -219,6 +232,7 @@
 				formData.append('current_dir', current_dir);
 				for (var i = 0; i < count; ++ i)
 					total_size += files.files[i].size;
+				console.log(total_size);
 				if (total_size > upload_limit_size*1024**2) {
 					$('response_status').style.color = '#f00';
 					$('response_status').innerHTML = 'Files size limit exited. Max size ' + upload_limit_size + 'MB';
@@ -246,7 +260,7 @@
 					method: 'POST',
 					headers: {'Content-Type': 'multipart/form-data'},
 					data: formData,
-					timeout: max_execution_time*1000,
+					timeout: max_input_time*1000,
 					cancelToken: upload_source.token,
 					onUploadProgress: function (progressEvent) {
 						var persentage = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -274,7 +288,7 @@
 						$('progress').style.display = 'none';
 						$('response_status').style.display = 'block';
 						$('response_status').style.color = '#f00';
-						$('response_status').innerHTML = 'Server timeout exited. ' + max_execution_time + ' seconds';
+						$('response_status').innerHTML = 'Server timeout exited. ' + max_input_time + ' seconds';
 					}
 				});
 			}
@@ -408,6 +422,7 @@
 			window.onload = function() {
 				set_upload_limit_size();
 				set_max_execution_time();
+				set_max_input_time();
 				list_dir('');
 				$('files').value = null;
 				$('new_directory').value = null;

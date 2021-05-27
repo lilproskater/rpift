@@ -26,6 +26,14 @@ Make these changes:
 server {
 	listen 80;
 	listen [::]:80;
+	fastcgi_param  PHP_VALUE max_execution_time = 0;  # Force waiting reading the downloading file
+	fastcgi_param  PHP_VALUE max_input_time = 0;  # Force waiting file uploads
+	fastcgi_param  PHP_VALUE memory_limit = 4097M;  # Should be greater a bit than upload_max_filesize
+	fastcgi_param  PHP_VALUE post_max_size = 4097M;  # Should be greater a bit than upload_max_filesize
+	fastcgi_param  PHP_VALUE upload_max_filesize = 4096M;  # Upload up to 4 GB
+...
+http {
+	client_max_body_size 4097M;  # Upload up to 4 GB
 ...
 root /var/www/rpift;
 # Add index.php to the list if you are using PHP
@@ -59,10 +67,6 @@ sudo systemctl restart php7.4-fpm
 sudo systemctl restart nginx
 ```
 
-## Configuration
+## About config file rpift.conf
 There is also a configuration file rpift.conf available. As you can see directory exposed to the file transferer can be changed there.  
-Also you can edit OVERRIDE_FILES config value to true, if you want files with the same name to be overriden on file upload. 
-```
-EXPOSE_DIR=/var/www/rpift/expose_dir
-OVERRIDE_FILES=false
-```
+Moreover permissions and blacklist can be controlled there.

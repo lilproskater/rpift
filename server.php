@@ -140,8 +140,8 @@
 		$conf = file_get_contents($config_file);
 		if (strpos($conf, ';') !== false)
 			return 'Invalid config file: Your config file should not contain ";" symbol';
-		$all_confs = ['EXPOSE_DIR', 'ALLOW_UPLOAD_OVERRIDE', 'ALLOW_ZIP_OVERRIDE', 'ALLOW_DELETE', 'ALLOW_ZIP', 'ALLOW_UPLOAD', 'ALLOW_MOVE', 'ALLOW_COPY', 'ALLOW_NEWDIR', 'BLACKLIST', 'MAX_UPLOAD_SIZE', 'MAX_EXECUTION_TIME'];
-		$mandatory_confs = ['EXPOSE_DIR', 'ALLOW_UPLOAD_OVERRIDE', 'ALLOW_ZIP_OVERRIDE', 'ALLOW_DELETE', 'ALLOW_ZIP', 'ALLOW_UPLOAD', 'ALLOW_MOVE', 'ALLOW_COPY', 'ALLOW_NEWDIR', 'MAX_UPLOAD_SIZE', 'MAX_EXECUTION_TIME'];
+		$all_confs = ['EXPOSE_DIR', 'ALLOW_UPLOAD_OVERRIDE', 'ALLOW_ZIP_OVERRIDE', 'ALLOW_DELETE', 'ALLOW_ZIP', 'ALLOW_UPLOAD', 'ALLOW_MOVE', 'ALLOW_COPY', 'ALLOW_NEWDIR', 'BLACKLIST'];
+		$mandatory_confs = ['EXPOSE_DIR', 'ALLOW_UPLOAD_OVERRIDE', 'ALLOW_ZIP_OVERRIDE', 'ALLOW_DELETE', 'ALLOW_ZIP', 'ALLOW_UPLOAD', 'ALLOW_MOVE', 'ALLOW_COPY', 'ALLOW_NEWDIR'];
 		$bool_confs = ['ALLOW_UPLOAD_OVERRIDE', 'ALLOW_ZIP_OVERRIDE', 'ALLOW_DELETE', 'ALLOW_ZIP', 'ALLOW_UPLOAD', 'ALLOW_MOVE', 'ALLOW_COPY', 'ALLOW_NEWDIR'];
 		$conf = explode("\n", $conf);
 		$conf_len = count($conf);
@@ -164,18 +164,6 @@
 				return 'Invalid config: '.$key.' should be equal to true or false!';
 			else
 				$conf[$key] = strtolower($conf[$key]) == 'true';
-		$max_upload_measure = substr($conf['MAX_UPLOAD_SIZE'], -1);
-		$max_upload_size = substr($conf['MAX_UPLOAD_SIZE'], 0, -1);
-		if (strpos('MG', $max_upload_measure) === false || !is_numeric($max_upload_size))
-			return 'Invalid config: MAX_UPLOAD_SIZE should be numeric ending with M or G';
-		$max_upload_size = intval($max_upload_size);
-		if ($max_upload_measure == 'G')
-			$max_upload_size *= 1024;
-		ini_set('memory_limit', strval($max_upload_size + 1).'M');
-		ini_set('post_max_size', strval($max_upload_size + 1).'M');
-		ini_set('upload_max_filesize', strval($max_upload_size).'M');
-		if (!is_numeric($conf['MAX_EXECUTION_TIME']))
-			return 'Invalid config: MAX_EXECUTION_TIME should be numeric (seconds)';
 		$conf['MAX_EXECUTION_TIME'] = intval($conf['MAX_EXECUTION_TIME']);
 		ini_set('max_execution_time', $conf['MAX_EXECUTION_TIME']);
 		$conf['MAX_UPLOAD_SIZE'] = strval($max_upload_size).'M';
@@ -560,13 +548,20 @@
 	}
 
 	function get_upload_limit_size() {
-		global $conf;
-		return intval(substr($conf['MAX_UPLOAD_SIZE'], 0, -1));
+		$mb = ini_get('upload_max_filesize');
+		$measure = substr($mb, -1);
+		$mb = intval(substr($mb, 0, -1));
+		if ($measure == 'G')
+			$mb *= 1024;
+		return $mb;
 	}
 
 	function get_max_execution_time() {
-		global $conf;
-		return $conf['MAX_EXECUTION_TIME'];
+		return ini_get('max_execution_time');
+	}
+
+	function get_max_input_time() {
+		return ini_get('max_input_time');
 	}
 
 	/* ENTRY POINT */
@@ -578,7 +573,6 @@
 		echo json_encode($result_pattern);
 		die();
 	}
-
 	/* GET REQUESTS */
 	if ($_GET) {
 		if (isset($_GET['list_dir']))
@@ -589,6 +583,8 @@
 			echo get_upload_limit_size();
 		if (isset($_GET['max_execution_time']))
 			echo get_max_execution_time();
+		if (isset($_GET['max_input_time']))
+			echo get_max_input_time();
 	}
 
 	/* POST REQUESTS */
