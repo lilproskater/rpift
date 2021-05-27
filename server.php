@@ -48,8 +48,8 @@
 	function is_in_blacklist($path) {
 		global $conf;
 		if (isset($conf['BLACKLIST'])) {
-			foreach ($conf['BLACKLIST'] as $black_folder) {
-				if (strpos($path, $black_folder) !== false)
+			foreach ($conf['BLACKLIST'] as $black_item) {
+				if (strpos($path, $black_item) !== false)
 					return true;
 			}
 		}
@@ -188,11 +188,12 @@
 			if (!$conf['BLACKLIST'])
 				return 'Invalid config: BLACKLIST cannot be empty if defined!';
 			$conf['BLACKLIST'] = str_replace(', ', ',', $conf['BLACKLIST']);
+			$conf['BLACKLIST'] = str_replace(' ,', ',', $conf['BLACKLIST']);
 			$conf['BLACKLIST'] = explode(',', $conf['BLACKLIST']);
-			foreach ($conf['BLACKLIST'] as $index=>$black_folder) {
-				$path = $conf['EXPOSE_DIR'].'/'.trim($black_folder, '/\\');
+			foreach ($conf['BLACKLIST'] as $index=>$black_item) {
+				$path = $conf['EXPOSE_DIR'].'/'.trim($black_item, '/\\');
 				if (!is_dir($path) && !file_exists($path))
-					return 'Invalid config: Directory or file '.$black_folder.' is in BLACKLIST, but cannot be found<br>'.$path;
+					return 'Invalid config: Directory or file '.$black_item.' is in BLACKLIST, but cannot be found<br>'.$path;
 				else
 					$conf['BLACKLIST'][$index] = $path;
 			}
@@ -563,6 +564,11 @@
 		return intval(substr($conf['MAX_UPLOAD_SIZE'], 0, -1));
 	}
 
+	function get_max_execution_time() {
+		global $conf;
+		return $conf['MAX_EXECUTION_TIME'];
+	}
+
 	/* ENTRY POINT */
 	$config_path = 'rpift.conf';
 	$result_pattern = ['status'=>'error', 'message'=>''];
@@ -581,6 +587,8 @@
 			download_file($_GET['current_dir'], $_GET['file']);
 		if (isset($_GET['upload_limit_size']))
 			echo get_upload_limit_size();
+		if (isset($_GET['max_execution_time']))
+			echo get_max_execution_time();
 	}
 
 	/* POST REQUESTS */

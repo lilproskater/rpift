@@ -83,6 +83,7 @@
 			var current_dir = '/';
 			var upload_source = null;
 			var upload_limit_size = null;
+			var max_execution_time = null;
 
 			function $(id) {
 				return document.getElementById(id);
@@ -112,13 +113,25 @@
 				});
 			}
 
+			function set_max_execution_time() {
+				axios({
+					url: '/server.php',
+					method: 'GET',
+					params: {
+						'max_execution_time': 'call_func',
+					}
+				}).then(response => {
+					max_execution_time = response['data'];
+				});
+			}
+
 			function cancel_upload() {
 				if (confirm("Do you really want to candel uploading?")) {
 					upload_source.cancel();
+					upload_source = null;
 					$('refresh_current_dir').click();
 					$('response_status').style.color = '#f00';
 					$('response_status').innerHTML = 'Uploading cancelled';
-					upload_source = null;
 					$('progress').style.display = 'none';
 					$('response_status').style.display = 'block';
 				}
@@ -233,6 +246,7 @@
 					method: 'POST',
 					headers: {'Content-Type': 'multipart/form-data'},
 					data: formData,
+					timeout: max_execution_time*1000,
 					cancelToken: upload_source.token,
 					onUploadProgress: function (progressEvent) {
 						var persentage = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -252,7 +266,17 @@
 						$('response_status').style.color = '#f00';
 						$('response_status').innerHTML = 'File size exited';
 					}
-				}).catch(error => {});
+				}).catch(error => {
+					if (error.code === 'ECONNABORTED') {
+						upload_source.cancel();
+						upload_source = null;
+						$('refresh_current_dir').click();
+						$('progress').style.display = 'none';
+						$('response_status').style.display = 'block';
+						$('response_status').style.color = '#f00';
+						$('response_status').innerHTML = 'Server timeout exited. ' + max_execution_time + ' seconds';
+					}
+				});
 			}
 
 			function list_dir(dir) {
@@ -291,6 +315,7 @@
 								url: '/server.php',
 								method: 'GET',
 								responseType: 'blob',
+								timeout: max_execution_time*1000,
 								params: {
 									'download_file': 'call_func',
 									'current_dir': current_dir,
@@ -306,6 +331,9 @@
 								} else
 									$('response_status').style.color = '#f00';
 								$('response_status').innerHTML = response['headers']['response']['message'];
+							}).catch(error => {
+								$('response_status').style.color = '#f00';
+								$('response_status').innerHTML = 'Server timeout exited. ' + max_execution_time + ' seconds';
 							});
 						});
 					}
@@ -379,6 +407,7 @@
 
 			window.onload = function() {
 				set_upload_limit_size();
+				set_max_execution_time();
 				list_dir('');
 				$('files').value = null;
 				$('new_directory').value = null;

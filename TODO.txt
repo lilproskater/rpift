@@ -1,3 +1,5 @@
+ini_set('max_execution_time', 0); // not working for file upload. (Fatal error: Maximum execution time of 60 seconds exceeded in W:\domains\rpift.com\server.php on line 574)
+NGINX all configuration (client_max_body_size set to 0, ...)
 Beautify whole site with forms below
 Beautify icons
 Refactoring, optimization + organization
