@@ -37,11 +37,10 @@ sudo systemctl restart nginx
 ```
 
 ## Apache Installation & Configuration
-Installing Apache & clonning config:
+Installing Apache & enabling site:
 ```
 sudo apt install apache2
 cd rpift
-sudo cp ./apache_rpift.conf /etc/apache2/sites-available/rpift.conf
 sudo a2ensite rpift.conf
 ```
 Changing php.ini values:
