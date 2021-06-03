@@ -164,9 +164,6 @@
 				return 'Invalid config: '.$key.' should be equal to true or false!';
 			else
 				$conf[$key] = strtolower($conf[$key]) == 'true';
-		$conf['MAX_EXECUTION_TIME'] = intval($conf['MAX_EXECUTION_TIME']);
-		ini_set('max_execution_time', $conf['MAX_EXECUTION_TIME']);
-		$conf['MAX_UPLOAD_SIZE'] = strval($max_upload_size).'M';
 		$conf['CONF_FNAME'] = $config_file;
 		$conf['EXPOSE_DIR'] = rtrim($conf['EXPOSE_DIR'], '/\\');
 		if (!is_dir($conf['EXPOSE_DIR']))

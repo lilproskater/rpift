@@ -1,5 +1,0 @@
-php_value max_execution_time = 0  # Force waiting reading the downloading file
-php_value max_input_time = 0  # Force waiting file uploads
-php_value memory_limit = 4097M  # Should be greater a bit than upload_max_filesize
-php_value post_max_size = 4097M  # Should be greater a bit than upload_max_filesize
-php_value upload_max_filesize = 4096M  # Upload up to 4 GB
